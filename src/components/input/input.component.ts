@@ -408,6 +408,14 @@ export default class SlInput extends ShoelaceElement implements ShoelaceFormCont
     this.formControlController.updateValidity();
   }
 
+  /**
+   * 在Web Components规范中，formAssociated 是一个静态属性，它可以被添加到自定义元素中，以确保该元素被视为表单的一部分，并且其值可以在表单提交时被自动收集。
+   * 当您在自定义元素类中添加 static get formAssociated() { return true; } 时，您告诉浏览器这个自定义元素应该表现得像一个表单控件。
+   */
+  static get formAssociated() {
+    return true;
+  }
+
   render() {
     const hasLabelSlot = this.hasSlotController.test('label');
     const hasHelpTextSlot = this.hasSlotController.test('help-text');
