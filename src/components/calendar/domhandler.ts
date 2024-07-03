@@ -133,7 +133,7 @@ export class DomHandler {
     element.style.left = left + 'px';
   }
 
-  public static absolutePosition(element: HTMLElement, target: any): void {
+  public static absolutePosition(element: HTMLElement, target: HTMLElement): void {
     const elementDimensions = element.offsetParent
       ? { width: element.offsetWidth, height: element.offsetHeight }
       : this.getHiddenElementDimensions(element);

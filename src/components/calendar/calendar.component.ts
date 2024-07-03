@@ -10,11 +10,12 @@ import { type CSSResultGroup, html } from 'lit';
 import ShoelaceElement from '../../internal/shoelace-element.js';
 
 import { classMap } from 'lit/directives/class-map.js';
-// import { DomHandler } from './domhandler.js';
+import { DomHandler } from './domhandler.js';
 import { property, state } from 'lit/decorators.js';
 import componentStyles from '../../styles/component.styles.js';
 import SlButton from '../button/button.component.js';
 import SlIconButton from '../icon-button/icon-button.js';
+import SlInput from '../input/input.js';
 import styles from './calendar.styles.js';
 
 /**
@@ -56,7 +57,8 @@ export default class SlCalendar extends ShoelaceElement {
   static styles: CSSResultGroup = [componentStyles, styles];
   static dependencies = {
     'sl-icon-button': SlIconButton,
-    'sl-button': SlButton
+    'sl-button': SlButton,
+    'sl-input': SlInput
   };
 
   @property() defaultDate: Date;
@@ -386,7 +388,39 @@ export default class SlCalendar extends ShoelaceElement {
   }
 
   render() {
-    return this.months.map((month: any) => this.genMonthHtml(month));
+    return html`
+      <div class="cs-dateinput-container">
+        <div class=${classMap({
+          hideme: this.inline
+        })}>
+          <sl-input class="dateinp" type="text" @focus="${this.focusHandler}" value=""></sl-input>
+        </div>
+        <div
+          class=${classMap({
+            'cs-dateinput-main': true,
+            hideme: this.hideCalendar
+          })}
+        >
+          ${this.months.map((month: any) => this.genMonthHtml(month))}
+        </div>
+      </div>
+    `;
+  }
+
+  focusHandler() {
+    this._hideCalendar = false;
+    const inpElm: any = this.shadowRoot?.querySelector('sl-input');
+    const dateElm: any = this.shadowRoot?.querySelector('.cs-dateinput-main');
+    console.log('calendar elements: ', inpElm, dateElm);
+    if (dateElm && inpElm) {
+      DomHandler.relativePosition(dateElm, inpElm);
+      dateElm.style.display = 'block';
+    }
+  }
+
+  @state() _hideCalendar = true;
+  get hideCalendar() {
+    return !this.inline && this._hideCalendar;
   }
 
   genMonthHtml(month: any) {
@@ -403,7 +437,12 @@ export default class SlCalendar extends ShoelaceElement {
         ${month.dates.map((week: any[]) => {
           return html`
             <tr>
-              ${week.map(d => html`<td><span class=${classMap({ 'cs-disabled': !d.selectable })}>${d.day}</span></td>`)}
+              ${week.map(
+                d =>
+                  html`<td @click=${(event: Event) => this.onDateSelect(event, d)}>
+                    <span class=${classMap({ 'cs-disabled': !d.selectable, 'cs-today': d.today })}>${d.day}</span>
+                  </td>`
+              )}
             </tr>
           `;
         })}
@@ -718,6 +757,7 @@ export default class SlCalendar extends ShoelaceElement {
   }
 
   onDateSelect(event: Event, dateMeta: DateMeta) {
+    console.log('select date:', dateMeta);
     if (this.disabled || !dateMeta.selectable) {
       event.preventDefault();
       return;
@@ -734,6 +774,11 @@ export default class SlCalendar extends ShoelaceElement {
     } else {
       if (this.shouldSelectDate()) {
         this.selectDate(dateMeta);
+        if (!this.inline) {
+          this._hideCalendar = true;
+          const dateElm: any = this.shadowRoot?.querySelector('.cs-dateinput-main');
+          dateElm.style.display = 'none';
+        }
       }
     }
 
@@ -815,6 +860,9 @@ export default class SlCalendar extends ShoelaceElement {
 
     this.inputFieldValue = formattedValue;
     this.updateFilledState();
+    const inpElm: any = this.shadowRoot?.querySelector('sl-input');
+    inpElm.value = formattedValue;
+
     // if (this.inputfieldViewChild?.nativeElement) {
     //   this.inputfieldViewChild.nativeElement.value = this.inputFieldValue;
     // }
@@ -905,7 +953,7 @@ export default class SlCalendar extends ShoelaceElement {
 
   updateModel(value: Date | any[] | null) {
     console.log(value); // TO BE REMOVED.
-    // this.value = value;
+    this.value = value;
     // if (this.dataType === 'date') {
     //   this.onModelChange(this.value);
     // } else if (this.dataType === 'string') {

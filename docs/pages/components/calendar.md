@@ -11,12 +11,20 @@ layout: component
 
 ## Examples
 
-### First Example
+### Example [date format]
 
-TODO
+<div>
+<sl-calendar dateFormat="yy-mm-dd"></sl-calendar>
+</div>
 
-### Second Example
+### Example [inline]
 
-TODO
+```html:preview
+<div>
+<sl-calendar inline="true"></sl-calendar>
+</div>
+```
+
+
 
 [component-metadata:sl-calendar]

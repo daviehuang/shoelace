@@ -27,6 +27,14 @@ export default css`
     border-radius: 50%;
     transition: box-shadow 0.2s;
     border: 1px solid transparent;
+    color: black;
+  }
+  table.cs-calendar-body td > span:hover {
+    background-color: lightgrey!important;
+  }
+  table.cs-calendar-body td > span.cs-today {
+    color: blue;
+    background-color: #EFF6FF;
   }
   .cs-calendar-body td > span.cs-disabled {
     cursor: default;
@@ -82,5 +90,19 @@ export default css`
         font-weight: bold;
       }
     }
+  }
+  .cs-dateinput-container {
+    position: relative;
+  }
+  .cs-dateinput-main {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+  }
+  :host([inline="true"]) .cs-dateinput-main {
+    position: relative;
+  }
+  .hideme {
+    display: none;
   }
 `;
