@@ -11,10 +11,22 @@ layout: component
 
 ## Examples
 
-### Example [date format]
+### Example [date format: yy-mm-dd]
 
 <div>
 <sl-calendar dateFormat="yy-mm-dd"></sl-calendar>
+</div>
+
+### Example [range selection]
+
+<div>
+<sl-calendar selectionMode="range"></sl-calendar>
+</div>
+
+### Example [with initial value]
+
+<div>
+<sl-calendar value="07/09/2024"></sl-calendar>
 </div>
 
 ### Example [inline]

@@ -11,12 +11,15 @@ import ShoelaceElement from '../../internal/shoelace-element.js';
 
 import { classMap } from 'lit/directives/class-map.js';
 import { DomHandler } from './domhandler.js';
-import { property, state } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
 import componentStyles from '../../styles/component.styles.js';
 import SlButton from '../button/button.component.js';
 import SlIconButton from '../icon-button/icon-button.js';
 import SlInput from '../input/input.js';
 import styles from './calendar.styles.js';
+import { FormControlController } from '../../internal/form.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
+import { live } from 'lit/directives/live.js';
 
 /**
  * @summary 日历控件，input控件在onFocus时弹出日历让用户选择日期
@@ -60,6 +63,9 @@ export default class SlCalendar extends ShoelaceElement {
     'sl-button': SlButton,
     'sl-input': SlInput
   };
+  @query('.input__control') input: HTMLInputElement;
+
+  @property({ reflect: true }) formId = '';
 
   @property() defaultDate: Date;
 
@@ -73,7 +79,9 @@ export default class SlCalendar extends ShoelaceElement {
 
   @property() disabled: any;
 
-  @property() dateFormat: string = 'mm/dd/yy';
+  @property() title: string;
+
+  @property() dateFormat: string = window.SYS_BU_DATE_FORMAT; //'mm/dd/yy';
 
   @property() multipleSeparator: string = ',';
 
@@ -183,8 +191,24 @@ export default class SlCalendar extends ShoelaceElement {
 
   @property() tabindex: number;
   // contentViewChild: ElementRef;
+  private readonly formControlController = new FormControlController(this, {
+    assumeInteractionOn: ['sl-blur', 'sl-input']
+  });
 
-  value: any;
+  _value: any;
+  @property()
+  set value(v) {
+    if (typeof v === 'string') {
+      this._value = this.parseValueFromString(v);
+    } else {
+      this._value = v;
+    }
+    this.updateInputfield();
+  }
+
+  get value() {
+    return this._value;
+  }
 
   dates: any[];
 
@@ -242,7 +266,8 @@ export default class SlCalendar extends ShoelaceElement {
 
   filled: boolean;
 
-  inputFieldValue?: string;
+  @state()
+  inputFieldValue?: string = '';
 
   _minDate: Date;
 
@@ -366,6 +391,8 @@ export default class SlCalendar extends ShoelaceElement {
   connectedCallback() {
     super.connectedCallback();
 
+    this.documentClickListener = this.hideCalendarHandler.bind(this);
+
     const date = this.defaultDate || new Date();
     this.currentMonth = date.getMonth();
     this.currentYear = date.getFullYear();
@@ -384,22 +411,85 @@ export default class SlCalendar extends ShoelaceElement {
     } else if (this.view === 'month') {
       this.createMonthPickerValues();
     }
+
+
+
     console.log('weekdays:', this.weekDays);
+  }
+
+  /**
+   * 在Web Components规范中，formAssociated 是一个静态属性，它可以被添加到自定义元素中，以确保该元素被视为表单的一部分，并且其值可以在表单提交时被自动收集。
+   * 当您在自定义元素类中添加 static get formAssociated() { return true; } 时，您告诉浏览器这个自定义元素应该表现得像一个表单控件。
+   */
+  static get formAssociated() {
+    return true;
+  }
+
+  /** Checks for validity but does not show a validation message. Returns `true` when valid and `false` when invalid. */
+  checkValidity() {
+    return this.input.checkValidity();
+  }
+
+  /** Gets the associated form, if one exists. */
+  getForm(): HTMLFormElement | null {
+    return this.formControlController.getForm();
+  }
+
+  /** Checks for validity and shows the browser's validation message if the control is invalid. */
+  reportValidity() {
+    // return this.input.reportValidity();
+    return null;
+  }
+
+  /** Sets a custom validation message. Pass an empty string to restore validity. */
+  setCustomValidity(message: string) {
+    this.input.setCustomValidity(message);
+    this.formControlController.updateValidity();
+  }
+
+  /** Gets the validity state object */
+  get validity() {
+    return this.input.validity;
+  }
+
+  /** Gets the validation message */
+  get validationMessage() {
+    return this.input.validationMessage;
+  }
+
+  calendarClickHandler(event: any) {
+    event.stopPropagation();
   }
 
   render() {
     return html`
-      <div class="cs-dateinput-container">
+      <div class="cs-dateinput-container" @click="${this.calendarClickHandler}">
         <div class=${classMap({
-          hideme: this.inline
-        })}>
-          <sl-input class="dateinp" type="text" @focus="${this.focusHandler}" value=""></sl-input>
+        'hideme': this.inline,
+        'input': true,
+        'input--medium': true,
+        'input--standard': true
+      })}>
+          <input
+            part="input"
+            id="input"
+            class="input__control"
+            title=${this.title /* An empty title prevents browser validation tooltips from appearing on hover */}
+            ?disabled=${this.disabled}
+            ?readonly="${true}"
+            ?required=${this.required}
+            placeholder=${ifDefined(this.placeholder)}
+            .value=${live(this.inputFieldValue)}
+            autocomplete="false"
+            aria-describedby="help-text"
+            @focus="${this.focusHandler}"
+          />
         </div>
         <div
           class=${classMap({
-            'cs-dateinput-main': true,
-            hideme: this.hideCalendar
-          })}
+        'cs-dateinput-main': true,
+        'hideme': this.hideCalendar
+      })}
         >
           ${this.months.map((month: any) => this.genMonthHtml(month))}
         </div>
@@ -409,13 +499,17 @@ export default class SlCalendar extends ShoelaceElement {
 
   focusHandler() {
     this._hideCalendar = false;
-    const inpElm: any = this.shadowRoot?.querySelector('sl-input');
-    const dateElm: any = this.shadowRoot?.querySelector('.cs-dateinput-main');
+    // const inpElm: any = this.shadowRoot ?.querySelector('sl-input');
+    const inpElm = this.input;
+    const dateElm: any = this.shadowRoot ?.querySelector('.cs-dateinput-main');
     console.log('calendar elements: ', inpElm, dateElm);
     if (dateElm && inpElm) {
       DomHandler.relativePosition(dateElm, inpElm);
       dateElm.style.display = 'block';
     }
+    setTimeout(() => {
+      this.bindDocumentClickListener();
+    }, 100);
   }
 
   @state() _hideCalendar = true;
@@ -435,27 +529,27 @@ export default class SlCalendar extends ShoelaceElement {
       </thead>
       <tbody>
         ${month.dates.map((week: any[]) => {
-          return html`
+        return html`
             <tr>
               ${week.map(
-                d =>
-                  html`<td @click=${(event: Event) => this.onDateSelect(event, d)}>
-                    <span class=${classMap({ 'cs-disabled': !d.selectable, 'cs-today': d.today })}>${d.day}</span>
+            d =>
+              html`<td @click=${(event: Event) => this.onDateSelect(event, d)}>
+                    <span class=${classMap({ 'cs-disabled': !d.selectable, 'cs-today': d.today, 'cs-selected': this.isSelected(d) })}>${d.day}</span>
                   </td>`
-              )}
+          )}
             </tr>
           `;
-        })}
+      })}
       </tbody>
     </table>`;
 
     const monthView = html`<div class="cs-monthpicker">
-      ${this.monthPickerValues?.map(
+      ${this.monthPickerValues ?.map(
         (monthName: string, index: number) => html`
           <span
             @click=${(event: Event) => {
-              this.onMonthSelect(event, index);
-            }}
+            this.onMonthSelect(event, index);
+          }}
             class="cs-calendar-month"
             >${monthName}</span
           >
@@ -463,12 +557,12 @@ export default class SlCalendar extends ShoelaceElement {
       )}
     </div> `;
     const yearView = html`<div class="cs-yearpicker">
-      ${this.yearPickerValues?.map(
+      ${this.yearPickerValues ?.map(
         (yearVal: number) => html`
           <span
             @click=${(event: Event) => {
-              this.onYearSelect(event, yearVal);
-            }}
+            this.onYearSelect(event, yearVal);
+          }}
             class="cs-calendar-year"
             >${yearVal}</span
           >
@@ -481,15 +575,15 @@ export default class SlCalendar extends ShoelaceElement {
         return html`
           <sl-button
             @click=${(event: Event) => {
-              this.switchToMonthView(event);
-            }}
+            this.switchToMonthView(event);
+          }}
             variant="text"
             >${this.getMonthName(month.month)}</sl-button
           >
           <sl-button
             @click=${(event: Event) => {
-              this.switchToYearView(event);
-            }}
+            this.switchToYearView(event);
+          }}
             variant="text"
             >${month.year}</sl-button
           >
@@ -513,9 +607,17 @@ export default class SlCalendar extends ShoelaceElement {
     const v = this.view;
     const calendarView = html`<div class="cs-calendar">
       <div class="cs-calendar-header">
-        <sl-icon-button name="chevron-left" @click=${this.onPrevButtonClick}></sl-icon-button>
+        <div class="button left" @click=${this.onPrevButtonClick}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
+          </svg>
+        </div>
         ${titleView()}
-        <sl-icon-button name="chevron-right" @click=${this.onNextButtonClick}></sl-icon-button>
+        <div class="button right" @click=${this.onNextButtonClick}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
+          </svg>
+        </div>
       </div>
       <div class="cs-calendar-container">${v === 'date' ? dateView : v === 'month' ? monthView : yearView}</div>
       ${this.showButtonBar && this.view === 'date' ? buttonBar : ''}
@@ -774,29 +876,48 @@ export default class SlCalendar extends ShoelaceElement {
     } else {
       if (this.shouldSelectDate()) {
         this.selectDate(dateMeta);
-        if (!this.inline) {
-          this._hideCalendar = true;
-          const dateElm: any = this.shadowRoot?.querySelector('.cs-dateinput-main');
-          dateElm.style.display = 'none';
-        }
       }
     }
 
-    if (this.isSingleSelection() && this.hideOnDateTimeSelect) {
-      setTimeout(() => {
-        event.preventDefault();
-        this.hideOverlay();
-
-        if (this.mask) {
-          // this.disableModality();
-        }
-
-        // this.cd.markForCheck();
-      }, 150);
+    if (!this.inline) {
+      if (this.isSingleSelection() || this.isRangeSelection() && this.isRangeDateCompleted()) {
+        this.hideCalendarHandler();
+        // this._hideCalendar = true;
+        // const dateElm: any = this.shadowRoot ?.querySelector('.cs-dateinput-main');
+        // dateElm.style.display = 'none';
+      }
     }
 
+    // if (this.isSingleSelection() && this.hideOnDateTimeSelect) {
+    //   setTimeout(() => {
+    //     event.preventDefault();
+    //     this.hideOverlay();
+
+    //     if (this.mask) {
+    //       // this.disableModality();
+    //     }
+
+    //     // this.cd.markForCheck();
+    //   }, 150);
+    // }
+
     this.updateInputfield();
+
+    this.emit('change');
+
+    // const myEvent = new CustomEvent('change', {
+    //   detail: {
+    //     message: 'This is my custom event detail.',
+    //   },
+    //   bubbles: true,
+    // });
+    // this.dispatchEvent(myEvent);
+
     event.preventDefault();
+  }
+
+  isRangeDateCompleted() {
+    return this.value ?.length === 2 && !!this.value[0] && !!this.value[1];
   }
 
   shouldSelectDate() {
@@ -846,7 +967,7 @@ export default class SlCalendar extends ShoelaceElement {
           }
         }
       } else if (this.isRangeSelection()) {
-        if (this.value?.length) {
+        if (this.value ?.length) {
           const startDate = this.value[0];
           const endDate = this.value[1];
 
@@ -860,8 +981,8 @@ export default class SlCalendar extends ShoelaceElement {
 
     this.inputFieldValue = formattedValue;
     this.updateFilledState();
-    const inpElm: any = this.shadowRoot?.querySelector('sl-input');
-    inpElm.value = formattedValue;
+    // const inpElm: any = this.shadowRoot ?.querySelector('sl-input');
+    // inpElm.value = formattedValue;
 
     // if (this.inputfieldViewChild?.nativeElement) {
     //   this.inputfieldViewChild.nativeElement.value = this.inputFieldValue;
@@ -931,7 +1052,7 @@ export default class SlCalendar extends ShoelaceElement {
     } else if (this.isMultipleSelection()) {
       this.updateModel(this.value ? [...this.value, date] : [date]);
     } else if (this.isRangeSelection()) {
-      if (this.value?.length) {
+      if (this.value ?.length) {
         let startDate = this.value[0];
         let endDate = this.value[1];
 
@@ -2035,7 +2156,7 @@ export default class SlCalendar extends ShoelaceElement {
                 Math.round(
                   (new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() -
                     new Date(date.getFullYear(), 0, 0).getTime()) /
-                    86400000
+                  86400000
                 ),
                 3
               );
@@ -2347,7 +2468,18 @@ export default class SlCalendar extends ShoelaceElement {
     // this.onClearClick.emit(event);
   }
 
+  hideCalendarHandler() {
+    this._hideCalendar = true;
+    const dateElm: any = this.shadowRoot ?.querySelector('.cs-dateinput-main');
+    if (dateElm) {
+      dateElm.style.display = 'none';
+    }
+
+    this.unbindDocumentClickListener();
+  }
+
   bindDocumentClickListener() {
+    document.addEventListener('click', this.documentClickListener);
     // if (!this.documentClickListener) {
     //   this.zone.runOutsideAngular(() => {
     //     const documentTarget: any = this.el ? this.el.nativeElement.ownerDocument : 'document';
@@ -2364,12 +2496,13 @@ export default class SlCalendar extends ShoelaceElement {
     // }
   }
 
-  //   unbindDocumentClickListener() {
-  //     if (this.documentClickListener) {
-  //       this.documentClickListener();
-  //       this.documentClickListener = null;
-  //     }
-  //   }
+  unbindDocumentClickListener() {
+    document.removeEventListener('click', this.documentClickListener);
+    // if (this.documentClickListener) {
+    //   this.documentClickListener();
+    //   this.documentClickListener = null;
+    // }
+  }
 
   //   bindDocumentResizeListener() {
   //     if (!this.documentResizeListener && !this.touchUI) {
