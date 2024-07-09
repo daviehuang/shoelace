@@ -29,6 +29,12 @@ layout: component
 <sl-calendar value="07/09/2024"></sl-calendar>
 </div>
 
+### Example [show button bar]
+
+<div>
+<sl-calendar value="07/09/2024" showButtonBar="true"></sl-calendar>
+</div>
+
 ### Example [inline]
 
 ```html:preview

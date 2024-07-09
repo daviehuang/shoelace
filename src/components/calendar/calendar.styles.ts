@@ -27,6 +27,13 @@ export default css`
         padding: 0 8px;
       }
     }
+
+    span.button {
+      cursor: pointer;
+      &:hover {
+        color: blue;
+      }
+    }
   }
   .cs-disabled {
     opacity: 0.6;
@@ -81,13 +88,14 @@ export default css`
     position: relative;
   }
   .cs-calendar .cs-calendar-buttonbar {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
     border-top: 1px solid #e5e7eb;
   }
   .cs-monthpicker,
   .cs-yearpicker {
     box-sizing: border-box;
     display: table;
+    width: 170px;
   }
   .cs-calendar-month,
   .cs-calendar-year {
@@ -98,6 +106,9 @@ export default css`
     overflow: hidden;
     position: relative;
     box-sizing: border-box;
+    &.highlight {
+      color: blue;
+    }
   }
   .cs-calendar-month {
     width: 30%;
@@ -111,7 +122,7 @@ export default css`
     align-items: center;
 
     button {
-      padding: 1rem;
+      padding: 0.25rem 0.75rem;
       border: none;
       background: transparent;
 
@@ -132,6 +143,7 @@ export default css`
     padding: 0.75rem;
     color: black;
     border: 1px solid lightgrey;
+    border-radius: 4px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   }
   :host([inline="true"]) .cs-dateinput-main {
@@ -146,7 +158,7 @@ export default css`
   .input {
     flex: 1 1 auto;
     display: inline-flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: start;
     position: relative;
     width: 100%;
@@ -161,7 +173,8 @@ export default css`
       var(--sl-transition-fast) border,
       var(--sl-transition-fast) box-shadow,
       var(--sl-transition-fast) background-color;
-
+    padding: 0 0.25rem;
+    
     &.hideme {
       display: none;
     }
@@ -171,6 +184,9 @@ export default css`
   .input--standard {
     background-color: var(--sl-input-background-color);
     border: solid var(--sl-input-border-width) var(--sl-input-border-color);
+    &.focus {
+      border-color: blue;
+    }
   }
 
   .input__control {
